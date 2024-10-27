@@ -25,30 +25,44 @@
 #include "DisplayManager.h"
 #include "MidiManager.h"
 
+// Buffer for serial output
 char pszBuffer[255];
 
-int Valve1Pin = 6;
-int Valve2Pin = 5;
+// HW PIN assignments
+int Valve1Pin = 5;
+int Valve2Pin = 6;
 int Valve3Pin = 10;
 int Valve4Pin = 11;
 int OctPin = 12;
+int BCPin = A0;
+int SliderPin = A2;
+int XPin = A4;
+int YPin = A5;
 
+// Static configuration
 int iNoteOnThreshold = 320;
 int iNoteOffThreshold = 280;
 int iBCDelta = 8;
 
 int iHalfTube=1;
 int iLowNote=52;
-int iHighNote=90;
+int iHighNote=79;
 
-
+// Dynamic configuration
 
 int iCoarseTuning = 0; // low c is C4
-byte iBaseKey = 60;
-byte iOldDisplayNote = 255;
+int iBaseKey = 60; 
+
+// State variables
+int iGoalNote = 0;
+int iOldGoalNote = 255;
 int OldBC = -1;
 bool bNoteOn = false;
-byte iCurrentNote = 0;
+int iNote = 0;
+int iOldNote = 255;
+int iCurrentNote = 255;
+int iDisplayNote = 0;
+int iOldDisplayNote = 255;
 
 unsigned long lastMillis = 0;
 
@@ -71,7 +85,7 @@ void setup() {
   Serial.println("This program comes with ABSOLUTELY NO WARRANTY; for details see <https://www.gnu.org/licenses/>");
   Serial.println("This is free software, and you are welcome to redistribute it under certain conditions.");
   Serial.println();
-  Serial.print("Midi Trumpet V4.2 SW v0.03.02 - ");
+  Serial.print("Midi Trumpet V4.2 SW v0.03.03 - ");
   Serial.print(F(__DATE__));
   Serial.print(" ");
   Serial.println(F(__TIME__));
@@ -80,38 +94,17 @@ void setup() {
   
   lastMillis = millis();
 }
-int V1 = 0;
-int V2 = 0;
-int V3 = 0;
-int V4 = 0;
 
-int iValveIndex = 14;
-//int iValveIndex = 10;
-
-void ReadValves(int & iValveValue, int & iValveMap)
+void CalculateNote(int iSliderValue, int iValveValue)
 {
-  V1 = 1-digitalRead(Valve1Pin);
-  V2 = 1-digitalRead(Valve2Pin);
-  V3 = 1-digitalRead(Valve3Pin);
-  V4 = 1-digitalRead(Valve4Pin);
-  iValveValue = V1*2+V2+V3*3+V4*5;
-  iValveMap = V4<<3 | V3<<2 | V2<<1 | V1;
-}
-
-int CalculateNote(int SliderValue, int iValveValue)
-{
-//  int iStartIndex = iValveIndex*iValveValue+1;
-  int iStartIndex = iValveIndex*iValveValue+iHalfTube;
-//  int iIndex = Valve1  + Valve2  + Valve3;
-  int iEndOfIndex = iStartIndex + iValveIndex -1;
-  //int iLastDelta = 9999;
+  int iStartIndex = NUM_HARMONICS*iValveValue+iHalfTube;
+  int iEndOfIndex = iStartIndex + NUM_HARMONICS -1;
   int iIndex = iStartIndex;
   int iLastIndex = iIndex;
   bool bDone = false;
   while (!bDone)
   {
-  //  int iDelta = abs( SliderValue - iBitOffset - iLookupValue[iIndex] );
-    if ( SliderValue <= iLookupValue[iIndex] )
+    if ( iSliderValue <= iLookupValue[iIndex] )
     {
       // Last index was closer, use it
       bDone = true;
@@ -119,7 +112,6 @@ int CalculateNote(int SliderValue, int iValveValue)
     }
     else
     {
-//      iLastDelta = iDelta;
       iLastIndex = iIndex;
       if ( iIndex == iEndOfIndex )
       {
@@ -141,9 +133,23 @@ int CalculateNote(int SliderValue, int iValveValue)
   {
     iNextIndex = iIndex + 1;
   }
-  int iNote = iLookupNote[iIndex];
-  return( iLookupNote[iIndex] + iCoarseTuning);
+  iDisplayNote = iLookupNote[iIndex];
+  iNote = iDisplayNote + iCoarseTuning;
+  iGoalNote = achGoalNote[iSliderValue];
 }
+
+void display_note()
+{
+  if ( (iDisplayNote != iOldDisplayNote) || (iGoalNote != iOldGoalNote) )
+  {
+    update_display(iDisplayNote,iGoalNote);
+    iOldDisplayNote = iDisplayNote;
+    iOldGoalNote = iGoalNote;
+    lastMillis = millis();
+  }
+}
+
+// local data for Breath control buffer
 const int BC_BUFFER_SIZE = 8;
 const int BC_ON_SAMPLES = 4;
 int BCBuffer[BC_BUFFER_SIZE];
@@ -153,7 +159,7 @@ int bufIndex = 0;
 int iOnIndex = -1;
 int iOnCount = 0;
 
-void buf_handler(int iValue, bool bNoteOn)
+void bcbuf_handler(int iValue, bool bNoteOn)
 {
   BCBuffer[bufIndex] = iValue;
   BCTimes[bufIndex] = micros();
@@ -176,9 +182,10 @@ void buf_handler(int iValue, bool bNoteOn)
       {
         iIndex = 0;
       }
-      Serial.println("----------------------");
+//      Serial.println("----------------------");
       for (i=0; i < BC_BUFFER_SIZE; i++)
       {
+        /*
         Serial.print(iIndex);
         Serial.print(" ");
         Serial.print(BCTimes[iIndex]);
@@ -186,6 +193,7 @@ void buf_handler(int iValue, bool bNoteOn)
         Serial.print(BCNoteOn[iIndex]);
         Serial.print(" ");
         Serial.println(BCBuffer[iIndex]);
+        */
         iIndex++;
         if (iIndex >= BC_BUFFER_SIZE)
         {
@@ -215,24 +223,28 @@ void buf_handler(int iValue, bool bNoteOn)
 }
 // the loop routine runs over and over again forever:
 void loop() {
-  // read the input pin:
-  int BCValue = analogRead(A0);
-  buf_handler(BCValue,bNoteOn);
+  // handle BC input:
+  int BCValue = analogRead(BCPin);
+  bcbuf_handler(BCValue,bNoteOn);
 
-//  int iBCFiltValue = analogRead(A1);
-  int iRawSlider = analogRead(A2);
-  int iX2 = analogRead(A4);
-  int iY2 = analogRead(A5); 
+  // read other analog inputs
+  int iRawSlider = analogRead(SliderPin);
+  int iX = analogRead(XPin);
+  int iY = analogRead(YPin); 
 
-  int SliderValue = 1023 - iRawSlider;
-  int iValveValue = 0;
-  int iValveMap = 0;
+  int iSliderValue = 1023 - iRawSlider;
 
-  ReadValves(iValveValue,iValveMap);
+  // read valves
+  int V1 = 1-digitalRead(Valve1Pin);
+  int V2 = 1-digitalRead(Valve2Pin);
+  int V3 = 1-digitalRead(Valve3Pin);
+  int V4 = 1-digitalRead(Valve4Pin);
+  int iValveValue = V1*2+V2+V3*3+V4*5;
+
   if (bNoteOn)
   {
-    int iNewNote = CalculateNote(SliderValue,iValveValue);
-    display_note(iCurrentNote,SliderValue,iValveValue,iValveMap,iOldDisplayNote);
+    CalculateNote(iSliderValue,iValveValue);
+    display_note();
     if (BCValue < iNoteOffThreshold )
     {
       MidiNoteOff(iCurrentNote);
@@ -240,11 +252,11 @@ void loop() {
     }
     else
     {
-      if (iNewNote != iCurrentNote)
+      if (iNote != iCurrentNote)
       {
-        MidiNoteOn(iNewNote, 64 /* BCCourse */);
+        MidiNoteOn(iNote, 64 /* BCCourse */);
         MidiNoteOff(iCurrentNote);
-        iCurrentNote = iNewNote;
+        iCurrentNote = iNote;
       }
       if ( abs(BCValue - OldBC) > iBCDelta)
       {
@@ -266,17 +278,13 @@ void loop() {
   }
   else
   {
-    byte iPreviousNote = iCurrentNote;
-    iCurrentNote = CalculateNote(SliderValue,iValveValue);
-    display_note(iCurrentNote,SliderValue,iValveValue,iValveMap,iOldDisplayNote);
+    CalculateNote(iSliderValue,iValveValue);
+    display_note();
     if (BCValue > iNoteOnThreshold)
     {
-      MidiNoteOn(iCurrentNote, 64 /* BCCourse */);
+      MidiNoteOn(iNote, 64 /* BCCourse */);
       bNoteOn = true;
-    }
-    if (iCurrentNote != iPreviousNote)
-    {
-      lastMillis = millis();
+      iCurrentNote = iNote;
     }
   }
   if ( ( millis() - lastMillis ) > 5000 )

@@ -3,7 +3,7 @@
 
 extern void init_display();
 
-extern void display_note(int iNote, int iSlider, int iValveIndex, int iValveMap, byte & iOldDisplayNote);
+extern void update_display(int iDisplayNote, int iGoalNote);
 
 extern void clear_display();
 #endif

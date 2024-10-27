@@ -2,6 +2,7 @@
 #define MIDITRUMPET_H
 
 extern char pszBuffer[255];
+extern byte achGoalNote[1024];
 
 extern int Valve1Pin;
 extern int Valve2Pin;
@@ -23,6 +24,8 @@ extern double fFactor[NUM_SEGMENTS];
 #define NUM_VALVE_OFFSETS 12
 #define NUM_HARMONICS 14
 
+extern int iBaseKey;
+
 extern const byte iLookupNote[NUM_VALVE_OFFSETS*NUM_HARMONICS];
 
 extern int iLookupValue[NUM_VALVE_OFFSETS*NUM_HARMONICS];
@@ -30,15 +33,6 @@ extern int iLookupValue[NUM_VALVE_OFFSETS*NUM_HARMONICS];
 extern const char * achNoteLookup[];
 
 extern const char * achOctaveLookup[];
-
-extern int iCoarseTuning;
-extern byte iBaseKey;
-extern byte iOldDisplayNote;
-extern int OldBC;
-extern bool bNoteOn;
-extern byte iCurrentNote;
-
-extern unsigned long lastMillis;
 
 extern void calculate_note_lookups();
 

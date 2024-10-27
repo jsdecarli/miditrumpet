@@ -32,33 +32,22 @@ void init_display()
   display.clearDisplay();
 }
 
-void display_note(int iNote, int iSlider, int iValveIndex, int iValveMap, byte & iOldDisplayNote)
+void update_display(int iDisplayNote, int iGoalNote)
 {
-  if (iNote != iOldDisplayNote)
-  {
-    display.clearDisplay();
-    display.setTextSize(3);
-    display.setCursor(0, 0);
-    display.print(achNoteLookup[iBaseKey%12]);
-    display.print(achOctaveLookup[iBaseKey/12]);
-    display.setTextSize(4);
-    display.setCursor(32, 32);
-    display.print(achNoteLookup[iNote%12]);
-    display.print(achOctaveLookup[iNote/12]);
-    display.display();
-    display.setCursor(0, 0);
-    iOldDisplayNote = iNote;
-  }
-  
-//  sprintf(pszBuffer, "V: %i%i%i%i S: %04i Note: %03i(%s%s) Last: %04i Current: %04i Next: %04i",
-//      V1,V2,V3,V4, iSlider,iNote, achNoteLookup[iNote%12],achOctaveLookup[iNote/12]
-//      ,
-//      iLookupValue[iLastIndex],
-//      iLookupValue[iIndex],
-//      iLookupValue[iNextIndex]
-//     );
-//  Serial.println(pszBuffer);
-  
+  display.clearDisplay();
+  display.setTextSize(3);
+  display.setCursor(0, 0);
+  display.print(achNoteLookup[iBaseKey%12]);
+  display.print(achOctaveLookup[iBaseKey/12]);
+  display.setCursor(64,0);
+  display.print(achNoteLookup[iGoalNote%12]);
+  display.print(achOctaveLookup[iGoalNote/12]);
+  display.setTextSize(4);
+  display.setCursor(48, 32);
+  display.print(achNoteLookup[iDisplayNote%12]);
+  display.print(achOctaveLookup[iDisplayNote/12]);
+  display.display();
+  display.setCursor(0, 0);
 }
 
 void clear_display()
@@ -66,4 +55,3 @@ void clear_display()
   display.clearDisplay();
   display.display();  
 }
-

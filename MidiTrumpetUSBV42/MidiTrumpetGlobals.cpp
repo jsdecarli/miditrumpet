@@ -2,7 +2,7 @@
 #include "MidiTrumpetGlobals.h"
 
 int iBreak[NUM_SEGMENTS] = {67,72,1024};
-double fFactor[NUM_SEGMENTS] = {4.0,2.0,1.0};
+double fFactor[NUM_SEGMENTS] = {3.0,1.5,1.0};
 
 const byte iLookupNote[NUM_VALVE_OFFSETS*NUM_HARMONICS]= {
   48,	60,	67,	72,	76,	79,	84,	88,	91,	96,	100,103,	108,	112,
@@ -26,6 +26,8 @@ const char * achNoteLookup[] = {
 const char * achOctaveLookup[] = {
   "-1","0","1","2","3","4","5","6","7","8","9" };
   
+byte achGoalNote[1024];
+
 void calculate_note_lookups() {
   Serial.println("Start Array Generation");
 
@@ -49,6 +51,11 @@ void calculate_note_lookups() {
   }
   for (iPitch = 0; iPitch < 1024; iPitch++)
   {
+    achGoalNote[iPitch] = byte(fGoalPitch+0.5);
+    Serial.print("Index ");
+    Serial.print(iPitch);
+    Serial.print("  ");
+    Serial.println(achGoalNote[iPitch]);
     for (iValveOffset = 0; iValveOffset < NUM_VALVE_OFFSETS; iValveOffset++)
     {
       int iHarmonic = iNoteIndexList[iValveOffset];
