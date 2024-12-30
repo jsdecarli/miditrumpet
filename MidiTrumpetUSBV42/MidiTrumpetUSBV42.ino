@@ -85,7 +85,7 @@ void setup() {
   Serial.println("This program comes with ABSOLUTELY NO WARRANTY; for details see <https://www.gnu.org/licenses/>");
   Serial.println("This is free software, and you are welcome to redistribute it under certain conditions.");
   Serial.println();
-  Serial.print("Midi Trumpet V4.2 SW v0.03.03 - ");
+  Serial.print("Midi Trumpet V4.2 SW v0.03.05 - ");
   Serial.print(F(__DATE__));
   Serial.print(" ");
   Serial.println(F(__TIME__));
@@ -290,5 +290,10 @@ void loop() {
   if ( ( millis() - lastMillis ) > 5000 )
   {
     clear_display();
+  }
+  CheckForRXData();
+  if (!bNoteOn)
+  {
+    ProcessRXData();
   }
 }
