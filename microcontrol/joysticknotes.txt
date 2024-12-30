@@ -1,0 +1,6 @@
+sensor 1 (A8) is X, max value away from display
+Max 815, mid 505, min 106
+
+sensor 2 (A7) is Y, max value up
+max 770, mid 450, min 110
+
